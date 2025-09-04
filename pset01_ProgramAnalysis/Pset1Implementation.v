@@ -19,8 +19,12 @@ Module Impl.
   (* Define [Neg] so that it implements Boolean negation, which flips
    * the truth value of a Boolean value.
    *)
-  Definition Neg (b : bool) : bool.
-  Admitted.
+  Definition Neg (b : bool) : bool :=
+    match b with
+    | true => false
+    | false => true
+    end.
+
 
   (* For instance, the negation of [true] should be [false].
    * This proof should follow from reducing both sides of the equation
@@ -28,7 +32,10 @@ Module Impl.
    *)
   Theorem Neg_true : Neg true = false.
   Proof.
-  Admitted.
+    simplify.
+    equality.
+  Qed.
+
 
   (* Negation should be involutive, meaning that if we negate
    * any Boolean value twice, we should get the original value back.
@@ -39,14 +46,21 @@ Module Impl.
    *)
   Theorem Neg_involutive : forall b : bool, Neg (Neg b) = b.
   Proof.
-  Admitted.
+    simplify.
+    cases b; simplify; equality.
+  Qed.
+
 
   (* Define [And] so that it implements Boolean conjunction. That is,
    * the result value should be [true] exactly when both inputs
    * are [true].
    *)
-  Definition And (x y : bool) : bool.
-  Admitted.
+  Definition And (x y : bool) : bool :=
+    match x,y with
+    | true, true => true
+    | _, _ => false
+    end.
+
 
   (* Here are a couple of examples of how [And] should act on
    * concrete inputs.
@@ -75,7 +89,7 @@ Module Impl.
 
   (* You may have noticed that the [=] operator above does not return a [bool]. *)
   Check (true = false).
-  
+
   (* [a = b] is instead a [Prop], short for proposition, the type of logical
    * statements. The set of propositions in Rocq is large and contains a variety
    * of statements, many of which are undecideable, so we can't in general
@@ -87,7 +101,7 @@ Module Impl.
    *)
   Compute (if 1 ==n 2 then (And true false) else true).
   Compute (1 = 2 -> True /\ False).
-  
+
   (* The following operations that you have seen or will see soon are in [Prop],
    * so they cannot be used in if-then-else statements:
    * - [a = b] (equality at an arbitrary type)
@@ -108,24 +122,24 @@ Module Impl.
    * To see an example of what can go wrong, uncommment the following [Compute] command
    * and note the reported error message.
    *)
-  
+
   (* Compute if 0 < 1 then 0 else 1. *)
 
   (* The correct boolean version. *)
   Compute if Nat.ltb 0 1 then 0 else 1.
-  
+
   (* In the second part of this assignment, we will work with a simple language
    * of imperative arithmetic programs that sequentially apply operations
    * to a natural-number-valued state.
-   * 
+   *
    * Remember that we are working with natural division which rounds down.
    * Note the output of these [Compute] commands.
    *)
-  
+
   Compute 3 / 3.
   Compute 2 / 3.
   Compute 4 / 3.
-  
+
   (*
 
    * The [Prog] datatype defines abstract syntax trees for this language.
@@ -170,8 +184,8 @@ Module Impl.
   Admitted.
 
   Theorem concatProg_Example :
-       concatProg (AddThen 1 Done) (MulThen 2 Done)
-       = AddThen 1 (MulThen 2 Done).
+    concatProg (AddThen 1 Done) (MulThen 2 Done)
+    = AddThen 1 (MulThen 2 Done).
   Proof.
   Admitted.
 
@@ -181,7 +195,7 @@ Module Impl.
    *)
   Theorem concatProg_numInstructions
     : forall (p1 p2 : Prog), numInstructions (concatProg p1 p2)
-                        = numInstructions p1 + numInstructions p2.
+                             = numInstructions p1 + numInstructions p2.
   Proof.
   Admitted.
 
@@ -191,7 +205,7 @@ Module Impl.
   Theorem concatProg_run
     : forall (p1 p2 : Prog) (initState : nat),
       run (concatProg p1 p2) initState =
-      run p2 (run p1 initState).
+        run p2 (run p1 initState).
   Proof.
   Admitted.
 
@@ -203,10 +217,10 @@ Module Impl.
     | MulThen n p => runPortable p (n*state)
     | DivThen n p =>
         if n ==n 0 then (false, state) else
-        runPortable p (state/n)
+          runPortable p (state/n)
     | VidThen n p =>
         if state ==n 0 then (false, 0) else
-        runPortable p (n/state)
+          runPortable p (n/state)
     | SetToThen n p =>
         runPortable p n
     end.
@@ -216,24 +230,24 @@ Module Impl.
 
   Definition goodProgram1 := AddThen 1 (VidThen 10 Done).
   Example runPortable_good : forall n,
-    runPortable goodProgram1 n = (true, 10/(1+n)).
+      runPortable goodProgram1 n = (true, 10/(1+n)).
   Proof. simplify. equality. Qed.
 
   Definition badProgram1 := AddThen 0 (VidThen 10 Done).
   Example runPortable_bad : let n := 0 in
-    runPortable badProgram1 n = (false, 0).
+                            runPortable badProgram1 n = (false, 0).
   Proof. simplify. equality. Qed.
 
   Definition badProgram2 := AddThen 1 (DivThen 0 Done).
   Example runPortable_bad2 : forall n,
-    runPortable badProgram2 n = (false, 1+n).
+      runPortable badProgram2 n = (false, 1+n).
   Proof. simplify. equality. Qed.
 
   (* Prove that running the concatenation [p] using [runPortable]
      coincides with using [run], as long as [runPortable] returns
      [true] to confirm that no divison by zero occurred. *)
   Lemma runPortable_run : forall p s0 s1,
-    runPortable p s0 = (true, s1) -> run p s0 = s1.
+      runPortable p s0 = (true, s1) -> run p s0 = s1.
   Proof.
   Admitted.
 
@@ -307,10 +321,10 @@ Module Impl.
   (* Now you're ready to write the proof in Rocq: *)
 
   Lemma validate_sound : forall p, validate p = true ->
-    forall s, runPortable p s = (true, run p s).
+                                   forall s, runPortable p s = (true, run p s).
   Admitted.
 
-  (* Here is the complete list of commands used in one possible solution:
+(* Here is the complete list of commands used in one possible solution:
     - Search, for example Search (_ + 0).
     - induct, for example induct x
     - simplify
