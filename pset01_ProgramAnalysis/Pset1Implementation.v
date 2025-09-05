@@ -67,25 +67,40 @@ Module Impl.
    *)
   Theorem And_true_true : And true true = true.
   Proof.
-  Admitted.
+    equality.
+Qed.
 
   Theorem And_false_true : And false true = false.
   Proof.
-  Admitted.
+    equality.
+Qed.
 
   (* Prove that [And] is commutative, meaning that switching the order
    * of its arguments doesn't affect the result.
    *)
   Theorem And_comm : forall x y : bool, And x y = And y x.
   Proof.
-  Admitted.
+    simplify.
+    cases x.
+    equality.
+    cases y.
+    equality.
+    simplify.
+    equality.
+    Qed.
+
+
 
   (* Prove that the conjunction of a Boolean value with [true]
    * doesn't change that value.
    *)
   Theorem And_true_r : forall x : bool, And x true = x.
   Proof.
-  Admitted.
+    simplify.
+    cases x; simplify; linear_arithmetic.
+
+    Qed.
+
 
   (* You may have noticed that the [=] operator above does not return a [bool]. *)
   Check (true = false).
@@ -124,8 +139,7 @@ Module Impl.
    *)
 
   (* Compute if 0 < 1 then 0 else 1. *)
-
-  (* The correct boolean version. *)
+ (* correct boolean version. *)
   Compute if Nat.ltb 0 1 then 0 else 1.
 
   (* In the second part of this assignment, we will work with a simple language
