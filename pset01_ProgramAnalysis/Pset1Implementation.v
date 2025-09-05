@@ -68,12 +68,12 @@ Module Impl.
   Theorem And_true_true : And true true = true.
   Proof.
     equality.
-Qed.
+  Qed.
 
   Theorem And_false_true : And false true = false.
   Proof.
     equality.
-Qed.
+  Qed.
 
   (* Prove that [And] is commutative, meaning that switching the order
    * of its arguments doesn't affect the result.
@@ -87,7 +87,7 @@ Qed.
     equality.
     simplify.
     equality.
-    Qed.
+  Qed.
 
 
 
@@ -99,7 +99,7 @@ Qed.
     simplify.
     cases x; simplify; linear_arithmetic.
 
-    Qed.
+  Qed.
 
 
   (* You may have noticed that the [=] operator above does not return a [bool]. *)
@@ -139,7 +139,7 @@ Qed.
    *)
 
   (* Compute if 0 < 1 then 0 else 1. *)
- (* correct boolean version. *)
+  (* correct boolean version. *)
   Compute if Nat.ltb 0 1 then 0 else 1.
 
   (* In the second part of this assignment, we will work with a simple language
@@ -155,7 +155,7 @@ Qed.
   Compute 4 / 3.
 
   (*
-
+      simplify.
    * The [Prog] datatype defines abstract syntax trees for this language.
    *)
 
@@ -165,43 +165,91 @@ Qed.
    * that running the program [p] should result in, when the
    * initial state is [n].
    *)
-  Fixpoint run (p : Prog) (initState : nat) : nat.
-  Admitted.
+  Fixpoint run (p : Prog) (initState : nat) : nat :=
+
+    match p with
+    | Done => initState
+    | AddThen n p => run p (n + initState)
+    | MulThen n p => run p (n * initState)
+    | DivThen n p =>  run p (initState/n)
+    | VidThen n p => run p (n/initState)
+    | SetToThen n p => run p n
+    end.
+
 
   Theorem run_Example1 : run Done 0 = 0.
   Proof.
-  Admitted.
+    simplify.
+    equality.
+
+  Qed.
+
 
   Theorem run_Example2 : run (MulThen 5 (AddThen 2 Done)) 1 = 7.
   Proof.
-  Admitted.
+    simplify.
+    equality.
+  Qed.
+
 
   Theorem run_Example3 : run (SetToThen 3 (MulThen 2 Done)) 10 = 6.
   Proof.
-  Admitted.
+    simplify.
+    equality.
+  Qed.
+
 
   (* Define [numInstructions] to compute the number of instructions
    * in a program, not counting [Done] as an instruction.
    *)
-  Fixpoint numInstructions (p : Prog) : nat.
-  Admitted.
+  Fixpoint numInstructions (p : Prog) : nat :=
+    match p with
+    | Done => 0
+    | AddThen n p => 1 + numInstructions p
+    | MulThen n p => 1 + numInstructions p
+    | DivThen n p => 1 + numInstructions p
+    | VidThen n p => 1 + numInstructions p
+    | SetToThen n p => 1 + numInstructions p
+    end.
+
 
   Theorem numInstructions_Example :
     numInstructions (MulThen 5 (AddThen 2 Done)) = 2.
   Proof.
-  Admitted.
+    simplify.
+    equality.
+  Qed.
 
   (* Define [concatProg] such that [concatProg p1 p2] is the program
    * that first runs [p1] and then runs [p2].
    *)
-  Fixpoint concatProg (p1 p2 : Prog) : Prog.
-  Admitted.
+  Fixpoint concatProg (p1 p2 : Prog) : Prog :=
+    match p1 with
+    | Done => p2
+    | AddThen n p => AddThen n (concatProg p p2)
+    | MulThen n p => MulThen n (concatProg p p2)
+    | DivThen n p => DivThen n (concatProg p p2)
+    | VidThen n p => VidThen n (concatProg p p2)
+    | SetToThen n p => SetToThen n (concatProg p p2)
+    end.
+
 
   Theorem concatProg_Example :
     concatProg (AddThen 1 Done) (MulThen 2 Done)
     = AddThen 1 (MulThen 2 Done).
   Proof.
-  Admitted.
+
+    simplify.
+    simplify.
+    equality.
+  Qed.
+
+
+
+
+
+
+
 
   (* Prove that the number of instructions in the concatenation of
    * two programs is the sum of the number of instructions in each
@@ -211,61 +259,148 @@ Qed.
     : forall (p1 p2 : Prog), numInstructions (concatProg p1 p2)
                              = numInstructions p1 + numInstructions p2.
   Proof.
-  Admitted.
+    simplify.
+    induct p1.
+    simplify.
+    repeat simplify; f_equal;    simplify;  equality.
+    simplify; f_equal; equality.
+    (* TODO why doesn't the repeat work :( *)
+    simplify.
+    f_equal.
+    equality.
+    simplify.
+    f_equal.
+    equality.
 
-  (* Prove that running the concatenation of [p1] with [p2] is
+    simplify.
+    f_equal.
+    equality.
+    simplify.
+    f_equal.
+    equality.
+
+Qed.
+
+
+    (* Prove that running the concatenation of [p1] with [p2] is
      equivalent to running [p1] and then running [p2] on the
      result. *)
-  Theorem concatProg_run
-    : forall (p1 p2 : Prog) (initState : nat),
-      run (concatProg p1 p2) initState =
-        run p2 (run p1 initState).
-  Proof.
-  Admitted.
+    Theorem concatProg_run
+      : forall (p1 p2 : Prog) (initState : nat),
+        run (concatProg p1 p2) initState =
+          run p2 (run p1 initState).
+    Proof.
+      simplify.
+      induct p1; simplify; try equality.
 
-  (* Read this definition and understand how division by zero is handled. *)
-  Fixpoint runPortable (p : Prog) (state : nat) : bool * nat :=
-    match p with
-    | Done => (true, state)
-    | AddThen n p => runPortable p (n+state)
-    | MulThen n p => runPortable p (n*state)
-    | DivThen n p =>
-        if n ==n 0 then (false, state) else
-          runPortable p (state/n)
-    | VidThen n p =>
-        if state ==n 0 then (false, 0) else
-          runPortable p (n/state)
-    | SetToThen n p =>
-        runPortable p n
-    end.
-  Arguments Nat.div : simpl never. (* you don't need to understand this line *)
+      Qed.
 
-  (* Here are a few examples: *)
 
-  Definition goodProgram1 := AddThen 1 (VidThen 10 Done).
-  Example runPortable_good : forall n,
-      runPortable goodProgram1 n = (true, 10/(1+n)).
-  Proof. simplify. equality. Qed.
+    (* Read this definition and understand how division by zero is handled. *)
+    Fixpoint runPortable (p : Prog) (state : nat) : bool * nat :=
+      match p with
+      | Done => (true, state)
+      | AddThen n p => runPortable p (n+state)
+      | MulThen n p => runPortable p (n*state)
+      | DivThen n p =>
+          if n ==n 0 then (false, state) else
+            runPortable p (state/n)
+      | VidThen n p =>
+          if state ==n 0 then (false, 0) else
+            runPortable p (n/state)
+      | SetToThen n p =>
+          runPortable p n
+      end.
+    Arguments Nat.div : simpl never. (* you don't need to understand this line *)
 
-  Definition badProgram1 := AddThen 0 (VidThen 10 Done).
-  Example runPortable_bad : let n := 0 in
-                            runPortable badProgram1 n = (false, 0).
-  Proof. simplify. equality. Qed.
+    (* Here are a few examples: *)
 
-  Definition badProgram2 := AddThen 1 (DivThen 0 Done).
-  Example runPortable_bad2 : forall n,
-      runPortable badProgram2 n = (false, 1+n).
-  Proof. simplify. equality. Qed.
+    Definition goodProgram1 := AddThen 1 (VidThen 10 Done).
+    Example runPortable_good : forall n,
+        runPortable goodProgram1 n = (true, 10/(1+n)).
+    Proof. simplify. equality. Qed.
 
-  (* Prove that running the concatenation [p] using [runPortable]
+    Definition badProgram1 := AddThen 0 (VidThen 10 Done).
+    Example runPortable_bad : let n := 0 in
+                              runPortable badProgram1 n = (false, 0).
+    Proof. simplify. equality. Qed.
+
+    Definition badProgram2 := AddThen 1 (DivThen 0 Done).
+    Example runPortable_bad2 : forall n,
+        runPortable badProgram2 n = (false, 1+n).
+    Proof. simplify. equality. Qed.
+
+    (* Prove that running the concatenation [p] using [runPortable]
      coincides with using [run], as long as [runPortable] returns
      [true] to confirm that no divison by zero occurred. *)
-  Lemma runPortable_run : forall p s0 s1,
-      runPortable p s0 = (true, s1) -> run p s0 = s1.
-  Proof.
-  Admitted.
+    Lemma runPortable_run : forall p s0 s1,
+        runPortable p s0 = (true, s1) -> run p s0 = s1.
+    Proof.
+      simplify.
+      induct p.
+      simplify.
+      equality.
 
-  (* The final goal of this pset is to implement [validate : Prog -> bool]
+      eapply IHp; assumption.
+      (* why does repeat not work???? *)
+      eapply IHp. assumption.
+
+      eapply IHp.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    (* The final goal of this pset is to implement [validate : Prog -> bool]
      such that if this function returns [true], the program would not trigger
      division by zero regardless of what state it starts out in.  [validate] is
      allowed to return [false] for some perfectly good programs that never cause
@@ -273,38 +408,38 @@ Qed.
      jargon, [validate] is required to be sound but not complete, but "complete
      enough" for the use cases defined by the examples given here: *)
 
-  Definition goodProgram2 := AddThen 0 (MulThen 10 (AddThen 0 (DivThen 1 Done))).
-  Definition goodProgram3 := AddThen 1 (MulThen 10 (AddThen 0 (VidThen 1 Done))).
-  Definition goodProgram4 := Done.
-  Definition goodProgram5 := SetToThen 0 (DivThen 1 Done).
-  Definition goodProgram6 := SetToThen 1 (VidThen 1 Done).
-  Definition goodProgram7 := AddThen 1 (DivThen 1 (DivThen 1 (VidThen 1 Done))).
+    Definition goodProgram2 := AddThen 0 (MulThen 10 (AddThen 0 (DivThen 1 Done))).
+    Definition goodProgram3 := AddThen 1 (MulThen 10 (AddThen 0 (VidThen 1 Done))).
+    Definition goodProgram4 := Done.
+    Definition goodProgram5 := SetToThen 0 (DivThen 1 Done).
+    Definition goodProgram6 := SetToThen 1 (VidThen 1 Done).
+    Definition goodProgram7 := AddThen 1 (DivThen 1 (DivThen 1 (VidThen 1 Done))).
 
-  (* If you already see a way to build [validate] that meets the
-   * requirements above, _and have a plan for how to prove it correct_,
-   * feel free to just code away. Our solution uses one intermediate definition
-   * and one intermediate lemma in the soundness proof -- both of which are more
-   * sophisticated than the top-level versions given here. *)
+    (* If you already see a way to build [validate] that meets the
+     * requirements above, _and have a plan for how to prove it correct_,
+     * feel free to just code away. Our solution uses one intermediate definition
+     * and one intermediate lemma in the soundness proof -- both of which are more
+     * sophisticated than the top-level versions given here. *)
 
-  (* If a clear plan hasn't emerged in 10 minutes (or if you get stuck later),
-   * take a look at the hints for this pset at the end of the signature file.
-   * It is not expected that this pset is doable for everyone without the hints,
-   * and some planning is required to complete the proof successfully.
-   * In particular, repeatedly trying out different combinations of tactics
-   * and ideas from hints until something sticks can go on for arbitrarily long
-   * with little insight and no success; just guessing a solution is unlikely.
-   * Thus, we encourage you to take your time to think, look at the hints when
-   * necessary, and only jump into coding when you have some idea why it should
-   * succeed. Some may call Rocq a video game, but it is not a grinding contest. *)
+    (* If a clear plan hasn't emerged in 10 minutes (or if you get stuck later),
+     * take a look at the hints for this pset at the end of the signature file.
+     * It is not expected that this pset is doable for everyone without the hints,
+     * and some planning is required to complete the proof successfully.
+     * In particular, repeatedly trying out different combinations of tactics
+     * and ideas from hints until something sticks can go on for arbitrarily long
+     * with little insight and no success; just guessing a solution is unlikely.
+     * Thus, we encourage you to take your time to think, look at the hints when
+     * necessary, and only jump into coding when you have some idea why it should
+     * succeed. Some may call Rocq a video game, but it is not a grinding contest. *)
 
 
-  Definition validate (p : Prog) : bool.
-  Admitted.
+    Definition validate (p : Prog) : bool.
+    Admitted.
 
-  (* Start by making sure that your solution passes the following tests, and add
-   * at least one of your own tests: *)
+    (* Start by making sure that your solution passes the following tests, and add
+     * at least one of your own tests: *)
 
-  Example validate1 : validate goodProgram1 = true. Admitted.
+    Example validate1 : validate goodProgram1 = true. Admitted.
   Example validate2 : validate goodProgram2 = true. Admitted.
   Example validate3 : validate goodProgram3 = true. Admitted.
   Example validate4 : validate goodProgram4 = true. Admitted.
