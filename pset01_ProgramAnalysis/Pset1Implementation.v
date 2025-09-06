@@ -279,56 +279,111 @@ Module Impl.
     f_equal.
     equality.
 
-Qed.
+  Qed.
 
 
-    (* Prove that running the concatenation of [p1] with [p2] is
+  (* Prove that running the concatenation of [p1] with [p2] is
      equivalent to running [p1] and then running [p2] on the
      result. *)
-    Theorem concatProg_run
-      : forall (p1 p2 : Prog) (initState : nat),
-        run (concatProg p1 p2) initState =
-          run p2 (run p1 initState).
-    Proof.
-      simplify.
-      induct p1; simplify; try equality.
+  Theorem concatProg_run
+    : forall (p1 p2 : Prog) (initState : nat),
+      run (concatProg p1 p2) initState =
+        run p2 (run p1 initState).
+  Proof.
+    simplify.
+    induct p1; simplify; try equality.
 
-      Qed.
+  Qed.
 
 
-    (* Read this definition and understand how division by zero is handled. *)
-    Fixpoint runPortable (p : Prog) (state : nat) : bool * nat :=
-      match p with
-      | Done => (true, state)
-      | AddThen n p => runPortable p (n+state)
-      | MulThen n p => runPortable p (n*state)
-      | DivThen n p =>
-          if n ==n 0 then (false, state) else
-            runPortable p (state/n)
-      | VidThen n p =>
-          if state ==n 0 then (false, 0) else
-            runPortable p (n/state)
-      | SetToThen n p =>
-          runPortable p n
-      end.
-    Arguments Nat.div : simpl never. (* you don't need to understand this line *)
+  (* Read this definition and understand how division by zero is handled. *)
+  Fixpoint runPortable (p : Prog) (state : nat) : bool * nat :=
+    match p with
+    | Done => (true, state)
+    | AddThen n p => runPortable p (n+state)
+    | MulThen n p => runPortable p (n*state)
+    | DivThen n p =>
+        if n ==n 0 then (false, state) else
+          runPortable p (state/n)
+    | VidThen n p =>
+        if state ==n 0 then (false, 0) else
+          runPortable p (n/state)
+    | SetToThen n p =>
+        runPortable p n
+    end.
+  Arguments Nat.div : simpl never. (* you don't need to understand this line *)
 
-    (* Here are a few examples: *)
+  (* Here are a few examples: *)
 
-    Definition goodProgram1 := AddThen 1 (VidThen 10 Done).
-    Example runPortable_good : forall n,
-        runPortable goodProgram1 n = (true, 10/(1+n)).
-    Proof. simplify. equality. Qed.
+  Definition goodProgram1 := AddThen 1 (VidThen 10 Done).
+  Example runPortable_good : forall n,
+      runPortable goodProgram1 n = (true, 10/(1+n)).
+  Proof. simplify. equality. Qed.
 
-    Definition badProgram1 := AddThen 0 (VidThen 10 Done).
-    Example runPortable_bad : let n := 0 in
-                              runPortable badProgram1 n = (false, 0).
-    Proof. simplify. equality. Qed.
+  Definition badProgram1 := AddThen 0 (VidThen 10 Done).
+  Example runPortable_bad : let n := 0 in
+                            runPortable badProgram1 n = (false, 0).
+  Proof. simplify. equality. Qed.
 
-    Definition badProgram2 := AddThen 1 (DivThen 0 Done).
-    Example runPortable_bad2 : forall n,
-        runPortable badProgram2 n = (false, 1+n).
-    Proof. simplify. equality. Qed.
+  Definition badProgram2 := AddThen 1 (DivThen 0 Done).
+  Example runPortable_bad2 : forall n,
+      runPortable badProgram2 n = (false, 1+n).
+  Proof. simplify. equality. Qed.
+
+  Lemma runPortable_safe :
+    forall n p s0, exists s1,
+      n > 0 ->
+      runPortable (DivThen n p) s0 = (true, s1).
+  Proof.
+    simplify.
+    cases n.
+    simplify.
+    exists 0.
+    intros H.
+    linear_arithmetic.
+    simplify.
+    induct p.
+
+    simplify.
+
+    exists (s0 / S n).
+
+    equality.
+
+    simplify.
+
+
+
+    set (t := n0 * S n + s0).
+    replace (n0 + s0 / S n) with (t / S n).
+    eapply IHp.
+    subst t.
+    rewrite Nat.add_comm.
+    rewrite Nat.div_add.
+    linear_arithmetic.
+    equality.
+
+    simplify.
+    set (t := n0 * s0).
+    replace (n0 *( s0 / S n)) with (t / S n).
+    eapply IHp.
+    subst t.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     (* Prove that running the concatenation [p] using [runPortable]
      coincides with using [run], as long as [runPortable] returns
@@ -336,6 +391,7 @@ Qed.
     Lemma runPortable_run : forall p s0 s1,
         runPortable p s0 = (true, s1) -> run p s0 = s1.
     Proof.
+
       simplify.
       induct p.
       simplify.
@@ -345,7 +401,9 @@ Qed.
       (* why does repeat not work???? *)
       eapply IHp. assumption.
 
-      eapply IHp.
+      (* we need to show that n is not zero in this case *)
+      (* eapply IHp.       *)
+      assert n > 0.
 
 
 
@@ -400,7 +458,11 @@ Qed.
 
 
 
-    (* The final goal of this pset is to implement [validate : Prog -> bool]
+
+
+
+
+      (* The final goal of this pset is to implement [validate : Prog -> bool]
      such that if this function returns [true], the program would not trigger
      division by zero regardless of what state it starts out in.  [validate] is
      allowed to return [false] for some perfectly good programs that never cause
@@ -408,39 +470,39 @@ Qed.
      jargon, [validate] is required to be sound but not complete, but "complete
      enough" for the use cases defined by the examples given here: *)
 
-    Definition goodProgram2 := AddThen 0 (MulThen 10 (AddThen 0 (DivThen 1 Done))).
-    Definition goodProgram3 := AddThen 1 (MulThen 10 (AddThen 0 (VidThen 1 Done))).
-    Definition goodProgram4 := Done.
-    Definition goodProgram5 := SetToThen 0 (DivThen 1 Done).
-    Definition goodProgram6 := SetToThen 1 (VidThen 1 Done).
-    Definition goodProgram7 := AddThen 1 (DivThen 1 (DivThen 1 (VidThen 1 Done))).
+      Definition goodProgram2 := AddThen 0 (MulThen 10 (AddThen 0 (DivThen 1 Done))).
+      Definition goodProgram3 := AddThen 1 (MulThen 10 (AddThen 0 (VidThen 1 Done))).
+      Definition goodProgram4 := Done.
+      Definition goodProgram5 := SetToThen 0 (DivThen 1 Done).
+      Definition goodProgram6 := SetToThen 1 (VidThen 1 Done).
+      Definition goodProgram7 := AddThen 1 (DivThen 1 (DivThen 1 (VidThen 1 Done))).
 
-    (* If you already see a way to build [validate] that meets the
-     * requirements above, _and have a plan for how to prove it correct_,
-     * feel free to just code away. Our solution uses one intermediate definition
-     * and one intermediate lemma in the soundness proof -- both of which are more
-     * sophisticated than the top-level versions given here. *)
+      (* If you already see a way to build [validate] that meets the
+       * requirements above, _and have a plan for how to prove it correct_,
+       * feel free to just code away. Our solution uses one intermediate definition
+       * and one intermediate lemma in the soundness proof -- both of which are more
+       * sophisticated than the top-level versions given here. *)
 
-    (* If a clear plan hasn't emerged in 10 minutes (or if you get stuck later),
-     * take a look at the hints for this pset at the end of the signature file.
-     * It is not expected that this pset is doable for everyone without the hints,
-     * and some planning is required to complete the proof successfully.
-     * In particular, repeatedly trying out different combinations of tactics
-     * and ideas from hints until something sticks can go on for arbitrarily long
-     * with little insight and no success; just guessing a solution is unlikely.
-     * Thus, we encourage you to take your time to think, look at the hints when
-     * necessary, and only jump into coding when you have some idea why it should
-     * succeed. Some may call Rocq a video game, but it is not a grinding contest. *)
+      (* If a clear plan hasn't emerged in 10 minutes (or if you get stuck later),
+       * take a look at the hints for this pset at the end of the signature file.
+       * It is not expected that this pset is doable for everyone without the hints,
+       * and some planning is required to complete the proof successfully.
+       * In particular, repeatedly trying out different combinations of tactics
+       * and ideas from hints until something sticks can go on for arbitrarily long
+       * with little insight and no success; just guessing a solution is unlikely.
+       * Thus, we encourage you to take your time to think, look at the hints when
+       * necessary, and only jump into coding when you have some idea why it should
+       * succeed. Some may call Rocq a video game, but it is not a grinding contest. *)
 
 
-    Definition validate (p : Prog) : bool.
-    Admitted.
+      Definition validate (p : Prog) : bool.
+      Admitted.
 
-    (* Start by making sure that your solution passes the following tests, and add
-     * at least one of your own tests: *)
+      (* Start by making sure that your solution passes the following tests, and add
+       * at least one of your own tests: *)
 
-    Example validate1 : validate goodProgram1 = true. Admitted.
-  Example validate2 : validate goodProgram2 = true. Admitted.
+      Example validate1 : validate goodProgram1 = true. Admitted.
+    Example validate2 : validate goodProgram2 = true. Admitted.
   Example validate3 : validate goodProgram3 = true. Admitted.
   Example validate4 : validate goodProgram4 = true. Admitted.
   Example validate5 : validate goodProgram5 = true. Admitted.
